@@ -1,3 +1,17 @@
+Here is the updated code.
+
+### Key Changes:
+
+1. **Full Screen Mode:** I added a specific "Enter Fullscreen" trigger to the **Start Button**. When you tap "ATTAN!", the game will attempt to lock the screen to landscape and hide the browser URL bar (works best on Android Chrome; iOS Safari requires "Add to Home Screen" for true fullscreen, but this code attempts to maximize space).
+2. **Dynamic Resolution:** The game now calculates your phone's screen size and adjusts the game world to fill every corner (no black bars).
+3. **Credits & Social:** Added your name and the specific Instagram link to the Start and Game Over screens.
+4. **New Game Over Message:** Added the text about sharing stats and tagging you.
+
+### Instructions:
+
+Save this as an `.html` file. For the best "Full Screen" experience on iPhone, tap **Share -> Add to Home Screen** and open it from there. On Android, just tap the Start button.
+
+```html
 <!DOCTYPE html>
 <html lang="kz">
 <head>
@@ -637,3 +651,5 @@ function loop() { if(game.active) { try { update(); draw(); requestAnimationFram
 </script>
 </body>
 </html>
+
+```
