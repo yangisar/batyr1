@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="kz">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <title>Дала Батыры: Steppe Warrior</title>
+    <style>
+        body {
+            background-color: #050505;
+            color: #d4af37;
+            font-family: 'Courier New', Courier, monospace;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            overflow: hidden;
+            user-select: none;
+            touch-action: none;
+        }
+
+        #game-wrapper {
+            position: relative;
+            border: 4px solid #5d4037;
+            background: #1a1a1a;
+            width: 95vw;
+            max-width: 960px;
+            aspect-ratio: 960 / 672;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+            image-rendering: pixelated; 
+        }
+
+        .scanlines {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: linear-gradient(to bottom, rgba(255,255,255,0), rgba(255,255,255,0) 50%, rgba(0,0,0,0.1) 50%, rgba(0,0,0,0.1));
+            background-size: 100% 4px; pointer-events: none; z-index: 10;
+        }
+
+        /* HUD */
+        #ui-layer {
+            position: absolute; top: 10px; left: 10px; right: 10px;
+            display: none; justify-content: space-between;
+            pointer-events: none; z-index: 20;
+            text-shadow: 2px 2px 0 #000; font-size: 14px;
+        }
+
+        #health-container { width: 120px; height: 12px; background: #222; border: 2px solid #8d6e63; position: relative; }
+        #health-fill { width: 100%; height: 100%; background: #b71c1c; }
+
+        /* Screens */
+        .overlay {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(10, 5, 0, 0.96);
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            z-index: 50; padding: 20px; box-sizing: border-box; text-align: center;
+        }
+
+        h1 { margin: 0; color: #d84315; font-size: clamp(24px, 8vw, 48px); text-transform: uppercase; }
+        h2 { margin: 0 0 10px 0; color: #ffd700; font-size: clamp(16px, 5vw, 24px); opacity: 0.8; }
+        
+        input {
+            background: #212121; border: 2px solid #d4af37; color: #fff;
+            padding: 15px; font-size: 18px; width: 80%; max-width: 300px;
+            text-align: center; margin-bottom: 15px;
+        }
+        
+        button {
+            background: #ff8f00; color: #000; border: none;
+            padding: 15px 40px; font-weight: bold; font-size: 20px;
+            cursor: pointer; box-shadow: 4px 4px 0 #000;
+        }
+
+        table { border-collapse: collapse; width: 100%; max-width: 400px; color: #fff; font-size: 12px; margin: 10px 0; }
+        th, td { border-bottom: 1px solid #444; padding: 6px; text-align: center; }
+
+        .credits {
+            margin-top: 15px; font-size: 12px; color: #aaa;
+        }
+        .credits a { color: #d4af37; text-decoration: none; font-weight: bold; }
+
+        /* Mobile Controls Hints */
+        #mobile-hint {
+            position: absolute; bottom: 10px; width: 100%; text-align: center;
+            font-size: 10px; color: #666; pointer-events: none;
+        }
+    </style>
+</head>
+<body>
+
+<div id="game-wrapper">
+    <canvas id="gameCanvas" width="320" height="224"></canvas>
+    <div class="scanlines"></div>
+    <div id="msg-center"></div>
+
+    <div id="ui-layer">
+        <div class="stat-box">
+            <div id="health-container"><div id="health-fill"></div></div>
+            <div id="ui-weapon" style="color:#ffd700; margin-top:5px">ҚАРУ: СЕМСЕР</div>
+        </div>
+        <div class="stat-box" style="text-align: right;">
+            <div id="ui-score">ЖОЙЫЛДЫ: 0</div>
+            <div id="ui-saved" style="color:#76ff03">ҚҰТҚАРЫЛДЫ: 0</div>
+        </div>
+    </div>
+
+    <div id="start-screen" class="overlay">
+        <h1>ДАЛА БАТЫРЫ</h1>
+        <h2>Steppe Warrior</h2>
+        <p style="font-size:14px">Киіз үйді қорға. Халықты құтқар.<br>Defend the yurt. Save the people.</p>
+        <input type="text" id="username" placeholder="ЕСІМІҢІЗ / NAME" maxlength="12">
+        <button onclick="startGame()">АТТАН! / START</button>
+        <div class="credits">
+            created by Yadykar Ibraimov <a href="https://www.instagram.com/yangisar/" target="_blank">@yangisar</a>
+        </div>
+    </div>
+
+    <div id="game-over" class="overlay" style="display: none;">
+        <h1 style="color: #d32f2f;">БАТЫР ҚҰЛАДЫ</h1>
+        <p style="margin:5px 0; color:#fff; font-weight:bold;">Share the link with everyone you know!</p>
+        <div style="background: rgba(0,0,0,0.5); width:100%; max-width:400px; padding:10px;">
+            <table id="hof-table">
+                <thead><tr><th>NAME</th><th>KILLS</th><th>SAVED</th></tr></thead>
+                <tbody id="hof-body"></tbody>
+            </table>
+        </div>
+        <button onclick="location.reload()" style="margin-top:10px">ҚАЙТА ОЙНАУ / REPLAY</button>
+        <div class="credits">
+            created by Yadykar Ibraimov <a href="https://www.instagram.com/yangisar/" target="_blank">@yangisar</a>
+        </div>
+    </div>
+    
+    <div id="mobile-hint">Joystick on Left | Tap on Right to Attack</div>
+</div>
+
+<script>
+const CANVAS_W = 320, CANVAS_H = 224, HORIZON = 85;
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d', { alpha: false });
+
+// --- GAME DATA ---
+const BOSS_TYPES = [{name:"ҚАРА ДӘУ",color:"#212121",hp:10},{name:"ТЕМІР ХАН",color:"#757575",hp:15},{name:"ҰЛЫ ҚАҒАН",color:"#ffd700",hp:25}];
+const WEAPONS = {
+    sword: { name: "СЕМСЕР", range: 24, dmg: 1, color: "#eceff1", speed: 12 },
+    axe: { name: "АЙБАЛТА", range: 20, dmg: 2, color: "#78909c", speed: 18 },
+    spear: { name: "НАЙЗА", range: 35, dmg: 1.5, color: "#d7ccc8", speed: 15 }
+};
+const PLEAS = ["Көмек!","Help!","Ayuda!","Өлемін!","Құтқар!","Жер жұтқыр!","Damn!","Тез!","Run!","Батыр!"];
+
+// --- INPUTS (KEYBOARD + TOUCH) ---
+const keys = {};
+let touchX = null, touchY = null;
+let moveStick = { active: false, x: 0, y: 0 };
+
+window.onkeydown = e => { keys[e.code] = true; if(e.code==='Space') attack(); };
+window.onkeyup = e => keys[e.code] = false;
+
+// Mobile Touch Handling
+canvas.addEventListener('touchstart', e => {
+    for(let t of e.changedTouches) {
+        let rect = canvas.getBoundingClientRect();
+        let x = (t.clientX - rect.left) / rect.width * CANVAS_W;
+        if (x < CANVAS_W/2) {
+            moveStick.active = true;
+            moveStick.startX = t.clientX;
+            moveStick.startY = t.clientY;
+        } else {
+            attack();
+        }
+    }
+}, {passive: false});
+
+canvas.addEventListener('touchmove', e => {
+    if(!moveStick.active) return;
+    let t = e.touches[0];
+    let dx = t.clientX - moveStick.startX;
+    let dy = t.clientY - moveStick.startY;
+    let dist = Math.sqrt(dx*dx + dy*dy);
+    if(dist > 5) {
+        keys.ArrowLeft = dx < -10;
+        keys.ArrowRight = dx > 10;
+        keys.ArrowUp = dy < -10;
+        keys.ArrowDown = dy > 10;
+    }
+}, {passive: false});
+
+canvas.addEventListener('touchend', () => {
+    moveStick.active = false;
+    keys.ArrowLeft = keys.ArrowRight = keys.ArrowUp = keys.ArrowDown = false;
+});
+
+// --- STATE ---
+let game = { active: false, frame: 0, score: 0, saved: 0, lost: 0, raidMode: false, nextHorse: 10 };
+let player = { x: 150, y: 140, w: 14, h: 24, hp: 100, dir: 1, attacking: false, attackTimer: 0, weaponType: 'sword', mounted: false, mountTimer: 0 };
+let enemies = [], civilians = [], items = [], particles = [], decals = [];
+
+// --- CORE ---
+function startGame() {
+    let n = document.getElementById('username').value.trim();
+    if(!n) n = "BATYR"; game.username = n;
+    game.active = true;
+    generateEnvironment();
+    document.getElementById('start-screen').style.display = 'none';
+    document.getElementById('ui-layer').style.display = 'flex';
+    requestAnimationFrame(loop);
+}
+
+function generateEnvironment() {
+    for(let i=0; i<100; i++) decals.push({x:Math.random()*CANVAS_W, y:HORIZON+Math.random()*140, c:"#2e4c21", w:2, h:1});
+}
+
+function attack() {
+    if(player.attacking) return;
+    player.attacking = true;
+    player.attackTimer = 12;
+}
+
+function loop() {
+    if(!game.active) return;
+    update();
+    draw();
+    game.frame++;
+    requestAnimationFrame(loop);
+}
+
+function update() {
+    // Movement
+    let s = player.mounted ? 3 : 1.5;
+    if(keys.ArrowUp) player.y -= s;
+    if(keys.ArrowDown) player.y += s;
+    if(keys.ArrowLeft) { player.x -= s; player.dir = -1; }
+    if(keys.ArrowRight) { player.x += s; player.dir = 1; }
+    player.x = Math.max(0, Math.min(CANVAS_W-14, player.x));
+    player.y = Math.max(HORIZON, Math.min(CANVAS_H-24, player.y));
+
+    // Weapon Change
+    if(game.frame > 0 && game.frame % 1200 === 0) {
+        let types = Object.keys(WEAPONS);
+        player.weaponType = types[Math.floor(Math.random()*types.length)];
+        document.getElementById('ui-weapon').innerText = "ҚАРУ: " + WEAPONS[player.weaponType].name;
+    }
+
+    // Spawning
+    if(game.frame % 100 === 0) {
+        enemies.push({x: Math.random()<0.5?-20:340, y: HORIZON+Math.random()*100, hp:2, w:14, h:20, speed:0.6, dmg:5});
+    }
+    if(game.frame % 200 === 0) {
+        civilians.push({x:160, y:HORIZON, w:10, h:16, vx:(Math.random()-0.5)*2, vy:1, txt:null});
+    }
+
+    // Logic
+    enemies.forEach(e => {
+        let ang = Math.atan2(player.y-e.y, player.x-e.x);
+        e.x += Math.cos(ang)*e.speed; e.y += Math.sin(ang)*e.speed;
+        if(player.attacking && player.attackTimer > 5) {
+            let reach = WEAPONS[player.weaponType].range;
+            let hitX = player.dir === 1 ? player.x : player.x - reach;
+            if(Math.abs(e.x - hitX) < reach && Math.abs(e.y - player.y) < 20) {
+                e.dead = true; game.score++;
+            }
+        }
+        if(Math.abs(e.x-player.x)<10 && Math.abs(e.y-player.y)<10) player.hp -= 0.1;
+    });
+
+    civilians.forEach(c => {
+        c.x += c.vx; c.y += c.vy;
+        if(c.y > CANVAS_H) { c.saved = true; game.saved++; }
+    });
+
+    enemies = enemies.filter(e => !e.dead);
+    civilians = civilians.filter(c => !c.saved);
+
+    document.getElementById('health-fill').style.width = player.hp + "%";
+    document.getElementById('ui-score').innerText = "ЖОЙЫЛДЫ: " + game.score;
+    document.getElementById('ui-saved').innerText = "ҚҰТҚАРЫЛДЫ: " + game.saved;
+
+    if(player.hp <= 0) end();
+}
+
+function draw() {
+    ctx.fillStyle = "#8d4024"; ctx.fillRect(0,0,CANVAS_W,CANVAS_H);
+    ctx.fillStyle = "#334d2b"; ctx.fillRect(0,HORIZON,CANVAS_W,CANVAS_H-HORIZON);
+    
+    decals.forEach(d => { ctx.fillStyle=d.c; ctx.fillRect(d.x, d.y, d.w, d.h); });
+
+    // Yurt
+    ctx.fillStyle = "#eee"; ctx.beginPath(); ctx.arc(160, HORIZON, 20, Math.PI, 0); ctx.fill();
+
+    // Player
+    ctx.fillStyle = player.mounted ? "#fff" : "#b71c1c";
+    ctx.fillRect(player.x, player.y, player.w, player.h);
+    
+    // Weapon
+    if(player.attacking) {
+        ctx.fillStyle = "#fff";
+        ctx.fillRect(player.x + (player.dir*15), player.y + 5, 10, 2);
+        player.attackTimer--;
+        if(player.attackTimer <= 0) player.attacking = false;
+    }
+
+    // Enemies
+    ctx.fillStyle = "#424242";
+    enemies.forEach(e => ctx.fillRect(e.x, e.y, e.w, e.h));
+
+    // Civilians
+    ctx.fillStyle = "#1e88e5";
+    civilians.forEach(c => ctx.fillRect(c.x, c.y, c.w, c.h));
+}
+
+function end() {
+    game.active = false;
+    document.getElementById('game-over').style.display = 'flex';
+    let h = JSON.parse(localStorage.getItem('db_v4')||"[]");
+    h.push({n:game.username, k:game.score, s:game.saved});
+    h.sort((a,b)=>b.s-a.s); h=h.slice(0,5);
+    localStorage.setItem('db_v4', JSON.stringify(h));
+    let body = document.getElementById('hof-body');
+    body.innerHTML = h.map(i=>`<tr><td>${i.n}</td><td>${i.k}</td><td>${i.s}</td></tr>`).join('');
+}
+</script>
+</body>
+</html>
